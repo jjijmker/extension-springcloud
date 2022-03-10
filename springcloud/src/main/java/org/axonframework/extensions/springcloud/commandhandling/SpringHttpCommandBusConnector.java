@@ -120,10 +120,13 @@ public class SpringHttpCommandBusConnector implements CommandBusConnector {
 
     @Override
     public <C> void send(Member destination, CommandMessage<? extends C> commandMessage) {
+        System.out.println("JAN=SpringHttpCommandBusConnector:123:SEND destination=" + destination.toString() + " commandMessage=" + commandMessage.toString());
         shutdownLatch.ifShuttingDown("JGroupsConnector is shutting down, no new commands will be sent.");
         if (destination.local()) {
+            System.out.println("JAN=SpringHttpCommandBusConnector:123:SEND local");
             localCommandBus.dispatch(commandMessage);
         } else {
+            System.out.println("JAN=SpringHttpCommandBusConnector:123:SEND remote");
             executor.execute(() -> sendRemotely(destination, commandMessage, DO_NOT_EXPECT_REPLY));
         }
     }
@@ -132,9 +135,11 @@ public class SpringHttpCommandBusConnector implements CommandBusConnector {
     public <C, R> void send(Member destination,
                             CommandMessage<C> commandMessage,
                             CommandCallback<? super C, R> callback) {
+        System.out.println("JAN=SpringHttpCommandBusConnector:136:SEND-W-CB destination=" + destination.toString() + " commandMessage=" + commandMessage.toString());
         shutdownLatch.ifShuttingDown("SpringHttpCommandBusConnector is shutting down, no new commands will be sent.");
         ShutdownLatch.ActivityHandle activityHandle = shutdownLatch.registerActivity();
         if (destination.local()) {
+            System.out.println("JAN=SpringHttpCommandBusConnector:136:SEND local");
             CommandCallback<C, R> wrapper = (cm, crm) -> {
                 try {
                     callback.onResult(cm, crm);
@@ -144,6 +149,7 @@ public class SpringHttpCommandBusConnector implements CommandBusConnector {
             };
             localCommandBus.dispatch(commandMessage, wrapper);
         } else {
+            System.out.println("JAN=SpringHttpCommandBusConnector:136:SEND remote");
             executor.execute(() -> {
                 try {
                     SpringHttpReplyMessage<R> replyMessage =
@@ -178,6 +184,7 @@ public class SpringHttpCommandBusConnector implements CommandBusConnector {
     private <C, R> ResponseEntity<SpringHttpReplyMessage<R>> sendRemotely(Member destination,
                                                                           CommandMessage<? extends C> commandMessage,
                                                                           boolean expectReply) {
+        System.out.println("JAN=SpringHttpCommandBusConnector:187:SEND-REMOTELY destination=" + destination.toString() + " commandMessage=" + commandMessage.toString());
         Optional<URI> optionalEndpoint = destination.getConnectionEndpoint(URI.class);
         if (optionalEndpoint.isPresent()) {
             URI endpointUri = optionalEndpoint.get();
@@ -222,6 +229,7 @@ public class SpringHttpCommandBusConnector implements CommandBusConnector {
 
     @PostMapping("/command")
     public <C, R> CompletableFuture<?> receiveCommand(@RequestBody SpringHttpDispatchMessage<C> dispatchMessage) {
+        System.out.println("JAN=SpringHttpCommandBusConnector:232:RECEIVE-COMMAND dispatchMessage=" + dispatchMessage.toString());
         CommandMessage<C> commandMessage = dispatchMessage.getCommandMessage(serializer);
         if (dispatchMessage.isExpectReply()) {
             try {

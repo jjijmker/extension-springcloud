@@ -146,11 +146,20 @@ public class SpringCloudCommandRouter implements CommandRouter {
 
     @Override
     public Optional<Member> findDestination(CommandMessage<?> commandMessage) {
+        String routingKey = routingStrategy.getRoutingKey(commandMessage);
+        System.out.println("JAN=SpringCloudCommandRouter:149:FIND-DESTINATION commandMessage=" + commandMessage.toString() + " routingKey=" + routingKey);
+        atomicConsistentHash.get().getMembers().forEach(member -> {
+            ConsistentHash.ConsistentHashMember consistentHashMember = (ConsistentHash.ConsistentHashMember) member;
+            System.out.println("SpringCloudCommandRouter:150:FIND-DESTINATION member.name=" + consistentHashMember.name() + " member.local=" + consistentHashMember.local()
+            + " member.segmentCount=" + consistentHashMember.segmentCount() + " member.uri=" + consistentHashMember.getConnectionEndpoint(URI.class).get()
+                + " member.commandFilter=" + consistentHashMember.getCommandFilter());
+        });
         return atomicConsistentHash.get().getMember(routingStrategy.getRoutingKey(commandMessage), commandMessage);
     }
 
     @Override
     public void updateMembership(int loadFactor, CommandMessageFilter commandFilter) {
+        System.out.println("JAN=SpringCloudCommandRouter:156:UPDATE-MEMBERSHIP loadFactor=" + loadFactor + " commandFilter=" + commandFilter + " localServiceInstance=" + localServiceInstance);
         capabilityDiscoveryMode.updateLocalCapabilities(localServiceInstance, loadFactor, commandFilter);
         consistentHashChangeListener.onConsistentHashChanged(atomicConsistentHash.updateAndGet(
                 consistentHash -> consistentHash.with(buildMember(localServiceInstance), loadFactor, commandFilter)
@@ -173,6 +182,7 @@ public class SpringCloudCommandRouter implements CommandRouter {
     @SuppressWarnings("unused")
     @EventListener
     public void resetLocalMembership(InstanceRegisteredEvent<?> event) {
+        System.out.println("JAN=SpringCloudCommandRouter:179:RESET-LOCAL-MEMBERSHIP event=" + event.toString());
         registered = true;
 
         Optional<Member> startUpPhaseLocalMember =
@@ -201,6 +211,7 @@ public class SpringCloudCommandRouter implements CommandRouter {
     @EventListener
     @SuppressWarnings("UnusedParameters")
     public void updateMemberships(HeartbeatEvent event) {
+        System.out.println("JAN=SpringCloudCommandRouter:208:UPDATE-MEMBERSHIPS event=" + event.toString());
         updateMemberships();
     }
 
